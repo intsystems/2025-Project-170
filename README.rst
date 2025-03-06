@@ -15,16 +15,26 @@
 
 .. class:: center
 
-    :Название исследуемой задачи: Мое название работы
-    :Тип научной работы: M1P/НИР/CoIS
-    :Автор: Имя Отчество Фамилия
-    :Научный руководитель: степень, Фамилия Имя Отчество
-    :Научный консультант(при наличии): степень, Фамилия Имя Отчество
+    :Название исследуемой задачи: Detecting Manual Alterations in Biological Image Data Using Contrastive Learning and Pairwise Image Comparison
+    :Тип научной работы: M1P
+    :Автор: Георгий Сергеевич Нехорошков
+    :Научный руководитель: к. ф-м н., Грабовой Андрей Валериевич
+    :Научный консультант: Дорин Даниил Дмитриевич
 
 Abstract
 ========
 
-Purus sit amet luctus venenatis lectus magna fringilla. Condimentum id venenatis a condimentum vitae sapien. Auctor neque vitae tempus quam pellentesque nec nam aliquam. Eget egestas purus viverra accumsan in. Nam aliquam sem et tortor. Donec et odio pellentesque diam volutpat commodo. Odio pellentesque diam volutpat commodo sed egestas. Sit amet dictum sit amet justo. Pellentesque sit amet porttitor eget. Imperdiet sed euismod nisi porta lorem mollis aliquam ut. Quis varius quam quisque id diam vel quam elementum. Ornare lectus sit amet est placerat in. Vulputate dignissim suspendisse in est ante. Elit sed vulputate mi sit amet mauris. Egestas sed tempus urna et pharetra pharetra. Viverra tellus in hac habitasse platea dictumst vestibulum rhoncus.
+In this paper, we address the problem of detecting manipulations in biological images. 
+Ensuring the integrity of biological 
+image data is essential for reliable scientific research. 
+The study focuses on developing a model for pairwise image comparison
+using contrastive learning, demonstrating high pairwise comparison metrics to detect 
+manual modifications or more subtle alterations. 
+The proposed method outperforms state-of-the-art models, 
+including CLIP and Barlow Twins, in the task of biological 
+image comparison on fMRI scans and cell datasets. 
+This work contributes to automated fraud detection and data validation in 
+biological research.
 
 Research publications
 ===============================
