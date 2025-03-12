@@ -80,15 +80,15 @@ Using Contrastive Learning and Pairwise Image Comparison}
 
 
 \author{%
-  Daniil Dorin\\
-  MIPT\\
-  Moscow, Russia\\
-  \texttt{dorin.dd.contact@gmail.com}\\
-  \And
   Georgii Nekhoroshkov\\
   MIPT\\
   Moscow, Russia\\
   \texttt{nekhoroshkov.gs@phystech.edu}\\
+  \And
+  Daniil Dorin\\
+  MIPT\\
+  Moscow, Russia\\
+  \texttt{dorin.dd.contact@gmail.com}\\
   \And
   Andrii Hraboviy\\
   MIPT\\
@@ -119,21 +119,128 @@ Using Contrastive Learning and Pairwise Image Comparison}
 \end{abstract}
 
 \textbf{Keywords:}
-Machine Learning, Pairwise Image Comparison, Fine-Tuning, Automated Fraud Detection, 
-Detecting Data Alterations
+Machine Learning, Pairwise Image Comparison, Self-Supervised Learning, 
+Fine-Tuning, Automated Fraud Detection, Detecting Data Alterations
 
 \section{Introduction}\label{sec:intro}
 
-TODO
+Our work aims to develop a machine learning solution for the problem 
+of reusing existing biological and medical snapshots to demonstrate results 
+in newly published biological articles. Fake images negatively impact on 
+medicine by providing false or fabricated results and undermining the credibility 
+of new scientific work in these fields. Existing state-of-the-art self-supervised learning 
+approaches demonstrate remarkable results in pairwise image comparison tasks 
+(\texttt{SimCLR} \cite{chen2020simclr}, \texttt{CLIP} \cite{radford2021clip}, 
+\text{Barlow Twins} \cite{zbontar2021barlow}). 
+However, their performance significantly worsens when applied to complex biological data. 
+It requires developing model that is more sensitive to subtle changes in the image content 
+while remaining resistant to various manual alterations, such as color jittering, 
+flipping, rotation, noise application, and random affine transformations. 
+At present, the problem of matching biological and medical images remains unsolved due 
+to the complexity of distinguishing snapshots of similar objects, where 
+differences can only be identified by experts in the field.
 
-\textbf{Contributions.} Our contributions can be summarized as follows:
-\begin{itemize}
-    \item We present...
-    \item We demonstrate the validity of our theoretical results through empirical studies...
-    \item We highlight the implications of our findings for...
-\end{itemize}
+We propose a solution, based on \texttt{Barlow Twins} \cite{zbontar2021barlow},
+trained and fine-tuned specifically for complex biological scans. 
+The model belongs to the family of self-supervised learning (SSL) 
+methods, which have been proven to be competitive with supervised representations 
+(\cite{chen2020simclr}, \cite{radford2021clip}, \cite{zbontar2021barlow}, \cite{melekhov2016}, 
+\cite{grill2020approach_ssl}). By leveraging a pretrained model, 
+it does not require large snapshot datasets to achieve state-of-the-art accuracy 
+on the \texttt{Haxby fMRI}, \texttt{CIL Epithelial Cell}, 
+\texttt{CIL Lymphocyte Cell} datasets. This solution can be widely used by 
+biological articles proofreaders to verify the authenticity of provided images and 
+detect borrowings from known datasets. 
 
-\textbf{Outline.} The rest of the paper is organized as follows...
+%\textbf{Contributions.} Our contributions can be summarized as follows:
+%\begin{itemize}
+%    \item We present...
+%    \item We demonstrate the validity of our theoretical results through empirical studies...
+%    \item We highlight the implications of our findings for...
+%\end{itemize}
+
+%\textbf{Outline.} The rest of the paper is organized as follows...
+
+\section{Problem}\label{sec:problem}
+
+Given dataset $\mathcal{D}$, consisting of $N$ biological snapshots: 
+
+$$ \mathcal{D} = \{d_i \in [0, 256)^{l \times l \times 3}, i \in [0, N)\} $$
+
+where $d_i$ is the RGB-decoded image, $l$ -- the length of an image side. 
+
+For simplicity, we will refer to a pair of images with the same content 
+before alterations as a \textit{similar} pair; otherwise, it will be called \textit{dissimilar}.
+Our goal is to build a model $\mathcal{M}$ using self-supervised contrastive learning (SSCL), 
+which should be able to distinguish dissimilar pairs of images and identify similar ones. 
+
+Let $x$ and $y$ be two images ($x, y \in [0, 256)^{l \times l \times 3}$).
+The model consists of two main parts:
+
+$$ \mathcal{M}(x, y) = h(f_{\theta}(x), f_{\theta}(y))) $$
+
+where $f_{\theta}$ is an encoder with a trainable parameter set $\theta$, and 
+$h$ is the linear classifier:
+
+$$ f_{\theta}(x) = v_x \in \mathbb{R}^{d} $$
+
+$$ h(v_x, v_y) = s \in \{0, 1\} $$
+
+Value $s = 1$ corresponds to similar pairs, $s = 0$ represents dissimilar pairs.
+
+To train the encoder, let us define the loss function $\mathcal{L}$:
+
+$$ \mathcal{L}(v_x, v_y, I(x, y)) \in [0, +\infty) $$
+
+where $v_x$ and $v_y$ are the embeddings of images $x$ and $y$, respectively, 
+and $I(x, y)$ is defined as follows:
+
+$$ I(x, y) = \begin{cases} 
+1, \text{if $x$ and $y$ are similar}, \\
+0, \text{otherwise}
+\end{cases} $$
+
+The model's accuracy will be evaluated by counting the number of correctly classified similar pairs 
+and incorrectly classified ones, producing a single accuracy value to compare with other 
+state-of-the-art models.
+
+\section{Method}
+
+DRAFT
+
+The problem of detecting reused biological and medical images is rooted in the complexity of
+distinguishing between similar images while remaining invariant to various transformations.
+The dataset consists of biological snapshots from publicly available sources, we will 
+store them as an array $D$ with elements $d_i \in [0, 256)^{l \times l \times 3}$, where 
+$l$ is the length of images sides. 
+Let us define the \textit{solution} -- a method which meant to solve the stated problem.
+Also we will use the termini \textit{model} -- the machine learning solution, which is 
+proposed in our work.
+
+Structure of the model is the same as in \texttt{Barlow Twins} \cite{zbontar2021barlow}.
+It takes a batch of images $X$, each image $x_i$ is being augmented in two ways, producing 
+two modified pictures $y_i^A$ and $y_i^B$ for each original. 
+The resulted two batches of distorted images $Y^A$ and $Y^B$ are then
+fed to a deep network function $f_{\theta}$, and the produced embeddings $Z^A$ and $Z^B$ 
+are used to evaluate loss function $\mathcal{L}$ with the following formula, proposed in 
+\texttt{Barlow Twins} \cite{zbontar2021barlow}:
+
+$$ \mathcal{L}(Z^A, Z^B) = \sum_i {(1 - \zeta_{ii})^2} + \lambda \sum_{i}\sum_{j \neq i}{\zeta_{ij}^2} $$
+
+where $\lambda$ is the positive constant, and $\zeta_{ij}$ -- cross-correlation matrix, 
+computed between the outputs of the two identical networks along the batch dimension:
+
+$$ \zeta_{ij} = 
+\frac{\sum_b{z_{b,i}^A z_{b,j}^B}}{\sqrt{\sum_b{(z_{b,i}^A)^2}}\sqrt{\sum_b{(z_{b,j}^B)^2}}} $$
+
+For the further simplicity, we will refer to a pair of images with the same content 
+before alterations as a \textit{similar} pair, otherwise it will be called \textit{dissimilar}. 
+The idea behind this loss function is to minimize the distance between similar pairs embeddings 
+and to make it bigger for dissimilar.
+
+The model is trained on the $70\%$ dataset $D$ data, then validated on another $10\%$ 
+and tested on the remaining $20\%$ -- let $D_{test}$ be this part. For accuracy evaluation, 
+we follow the widely used linear evaluation protocol (here comes the links from \cite{chen2020simclr}).
 
 \section{Related Work}\label{sec:rw}
 
