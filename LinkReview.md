@@ -12,7 +12,7 @@
 | Main Articles | Siamese network features for image matching | 2016 | Melekhov I., Kannala J., Rahtu E. | [IEEE](https://ieeexplore.ieee.org/document/7899663) |  | Default approach, loss function ideas |
 |  | A simple framework for contrastive learning of visual representations | 2020 | Chen T. et al. | [arXiv](https://arxiv.org/abs/2002.05709) |  | Default approach, better loss function |
 |  | Learning Transferable Visual Models from Natural Language Supervision | 2021 | Radford, A. et al. | [arXiv](https://arxiv.org/abs/2103.00020) |  | CLIP, Image + text, may not be useful in our case |
-|  | Barlow Twins: Self-Supervised Learning via Redundancy Reduction | 2021 | Zbontar, J. et al. | [arXiv](https://arxiv.org/abs/2103.03230) |  | Barlow Twins, main model for the first approach |
+|  | Barlow Twins: Self-Supervised Learning via Redundancy Reduction | 2021 | Zbontar, J. et al. | [arXiv](https://arxiv.org/abs/2103.03230) | [Github](https://github.com/facebookresearch/barlowtwins) | Barlow Twins, main model for the first approach |
 | Useful | VISSL |  | Facebook |  | [GitHub](https://github.com/facebookresearch/vissl) | Computer **VI**sion library for state-of-the-art **S**elf-**S**upervised **L**earning research with PyTorch |
 |  | MMSelfSup |  | OpenMMLab |  | [GitHub](https://github.com/open-mmlab/mmselfsup) | Collection of pretrained models (including SimCLR, Barlow Twins) |
 |  | Contrastive Learning Walkthrough |  | v7labs | [WebPage](https://www.v7labs.com/blog/contrastive-learning-guide) |  | Big collection of theoretical and practical results |

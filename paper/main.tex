@@ -49,6 +49,9 @@
 \usepackage{algorithmicx}
 \usepackage{algpseudocode}
 \usepackage{listings}
+\usepackage{caption}
+
+\captionsetup[figure]{width=0.7\textwidth}
 
 \newtheorem{theorem}{Theorem} % continuous numbers
 %%\newtheorem{theorem}{Theorem}[section] % sectionwise numbers
@@ -203,6 +206,42 @@ $$ I(x, y) = \begin{cases}
 The model's accuracy will be evaluated by counting the number of correctly classified similar pairs 
 and incorrectly classified ones, producing a single accuracy value to compare with other 
 state-of-the-art models.
+
+\section{Computational Experiment}
+
+In this section, we conduct an experiment to train the projector of the 
+\texttt{Barlow Twins} model on a blood cells dataset. 
+Our goal is to determine if the model, with its state-of-the-art pretrained encoder, 
+can be successfully adapted to our problem.
+
+The model's encoder is the pretrained \texttt{ResNet50} from the original article
+\cite{zbontar2021barlow}. The dataset consists of $320$ images of lymphocyte cells, 
+split into a training set of $256$ images and a validation set of $64$ scans. 
+The projector is composed of three groups of layers; each group contains a linear layer, 
+batch normalization, and a ReLU activation function. 
+The input dimensions for the groups are $2048$, $1024$, and $1024$, respectively.
+
+The loss function is identical to that described in the original article. 
+For optimization, we use the \texttt{Adam} optimizer with the following learning rate schedule:
+
+$$ q_k = \frac{1}{2} \cdot (1 + \cos(\pi \cdot \frac{k}{K})) $$
+
+$$ \gamma_{k} = \gamma_{start} \cdot q_k + \gamma_{end} \cdot (1 - q_k) $$
+
+where $k$ is the epoch number, $K$ is the total number of epochs, 
+$\gamma_{start} = 5 \cdot 10^{-3}$, $\gamma_{end} = 5 \cdot 10^{-4}$. 
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/BT_blood-cells-256_experiment.png}
+    \caption{Graph of the loss function for training and validation samples. 
+    The experiment was conducted over $180$ epochs. 
+    The validation loss decreases alongside the training loss, indicating that 
+    the model can be trained further. 
+    Training takes approximately $25$ minutes on a Google Colab GPU. 
+    }
+    \label{fig:experiment}
+\end{figure}
 
 \section{Method}
 
