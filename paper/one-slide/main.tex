@@ -38,57 +38,66 @@
 
 %--------------------------------------------------------------------------------------------
 
-\title{ Detecting Manual Alterations in Biological Image Data
-Using Contrastive Learning and Pairwise Image Comparison}
-\author{Georgii Nekhoroshkov}
-\institute[]{Moscow Institute of Physics and Technology}
-\date{March 27, 2025}
+%\title{ Detecting Manual Alterations in Biological Image Data
+%Using Contrastive Learning and Pairwise Image Comparison}
+%\author{Georgii Nekhoroshkov}
+%\institute[]{Moscow Institute of Physics and Technology}
+%\date{March 27, 2025}
 
 %---------------------------------------------------------------------------------------------
 \begin{document}
-\begin{frame}
-\titlepage
-\end{frame}
+%\begin{frame}
+%\titlepage
+%\end{frame}
 %---------------------------------------------------------------------------------------------
 %\section{Please do not use sectioning in the presentations}
-\begin{frame}{Identification of Fabricated Images}
-\begin{block}{The problem}
-Instances of fraud in biological science articles.
-\end{block}
-\begin{block}{The method}
-Developing a robust self-supervised pairwise image comparison model resistant to alterations.
-\end{block}
-\begin{block}{The solution}
-Building on ideas from Barlow Twins, the plan is as follows:
-\begin{enumerate}[1)]
-\item setup Barlow Twins model with pre-trained ResNet50 encoder,
-\item train model's projector on biological scans,
-\item train model's probability head.
-\end{enumerate}
-\end{block}
-\end{frame}
+%\begin{frame}{Identification of Fabricated Images}
+%\begin{block}{The problem}
+%Instances of fraud in biological science articles.
+%\end{block}
+%\begin{block}{The method}
+%Developing a robust self-supervised pairwise image comparison model resistant to alterations.
+%\end{block}
+%\begin{block}{The solution}
+%Building on ideas from Barlow Twins, the plan is as follows:
+%\begin{enumerate}[1)]
+%\item setup Barlow Twins model with pre-trained ResNet50 encoder,
+%\item train model's projector on biological scans,
+%\item train model's probability head.
+%\end{enumerate}
+%\end{block}
+%\end{frame}
 %---------------------------------------------------------------------------------------------
-\begin{frame}{Graphical highlights and experiment results}
-\bigskip
+\begin{frame}{Identification of Fabricated Biological Images}
 \begin{columns}
-    \begin{column}{0.45\textwidth}
-        \includegraphics[width=1\textwidth]{model.png}
+    \begin{column}{0.42\textwidth}
+        \begin{block}{The problem}
+        Detection of similar images despite modifications.
+        \end{block}
     \end{column}
-    \begin{column}{0.55\textwidth}
-        Trained on 256 blood cells images
-        \begin{table}
-            \centering
-            \resizebox{\columnwidth}{!}{%
-                \begin{tabular}{|c|c|c|c|c|}
-                    \hline
-                    \textbf{} & \textbf{F1-score} & \textbf{Precision} & \textbf{Recall} & \textbf{AUC} \\ \hline
-                    Model & 0.80 & 0.88 & 0.73 & 0.92 \\ \hline
-                \end{tabular}
-            }
-        \end{table}
-        \includegraphics[width=1\textwidth]{roc-curve.png}
+    \begin{column}{0.58\textwidth}
+        \begin{block}{The solution}
+        A Barlow Twins\footnotemark{}-based 
+        model for pairwise image comparison.
+        \end{block}
     \end{column}
 \end{columns}
-\bigskip
+
+\medskip
+
+\begin{columns}
+    \begin{column}{0.42\textwidth}
+        \includegraphics[width=0.86\textwidth]{model.png}
+    \end{column}
+    \begin{column}{0.58\textwidth}
+        The model processes two images and outputs a value from [0, 1] --
+        the likelihood that they are identical, up to modifications.
+        
+        \bigskip
+        The method leverages a self-supervised learning approach.
+    \end{column}
+\end{columns}
+\footnotetext{\textit{J. Zbontar et al.} Barlow Twins: Self-Supervised Learning via 
+        Redundancy Reduction // ICML, 2021.}
 \end{frame}
 \end{document}
