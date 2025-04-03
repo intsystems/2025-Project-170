@@ -168,16 +168,16 @@ detect borrowings from known datasets.
 
 Given dataset $\mathcal{D}$, consisting of $N$ biological snapshots: 
 
-$$ \mathcal{D} = \{d_i \in [0, 256)^{l \times l \times 3}, i \in [0, N)\} $$
+$$ \mathcal{D} = \{d_i \in \mathcal{S}, i \in [0, N)\} $$
 
-where $d_i$ is the RGB-decoded image, $l$ -- the length of an image side. 
+where $\mathcal{S}$ is the image space. 
 
 For simplicity, we will refer to a pair of images with the same content 
 before alterations as a \textit{similar} pair; otherwise, it will be called \textit{dissimilar}.
 Our goal is to build a model $\mathcal{M}$ using self-supervised contrastive learning (SSCL), 
 which should be able to distinguish dissimilar pairs of images and identify similar ones. 
 
-Let $x$ and $y$ be two images ($x, y \in [0, 256)^{l \times l \times 3}$).
+Let $x$ and $y$ be two images ($x, y \in \mathcal{S}$).
 The model consists of two main parts:
 
 $$ \mathcal{M}(x, y) = h(f_{\theta}(x), f_{\theta}(y))) $$
@@ -191,17 +191,17 @@ $$ h(v_x, v_y) = s \in \{0, 1\} $$
 
 Value $s = 1$ corresponds to similar pairs, $s = 0$ represents dissimilar pairs.
 
-To train the encoder, let us define the loss function $\mathcal{L}$:
+%To train the encoder, let us define the loss function $\mathcal{L}$:
 
-$$ \mathcal{L}(v_x, v_y, I(x, y)) \in [0, +\infty) $$
+%$$ \mathcal{L}(v_x, v_y, I(x, y)) \in [0, +\infty) $$
 
-where $v_x$ and $v_y$ are the embeddings of images $x$ and $y$, respectively, 
-and $I(x, y)$ is defined as follows:
+%where $v_x$ and $v_y$ are the embeddings of images $x$ and $y$, respectively, 
+%and $I(x, y)$ is defined as follows:
 
-$$ I(x, y) = \begin{cases} 
-1, \text{if $x$ and $y$ are similar}, \\
-0, \text{otherwise}
-\end{cases} $$
+%$$ I(x, y) = \begin{cases} 
+%1, \text{if $x$ and $y$ are similar}, \\
+%0, \text{otherwise}
+%\end{cases} $$
 
 The model's accuracy will be evaluated by counting the number of correctly classified similar pairs 
 and incorrectly classified ones, producing a single accuracy value to compare with other 
@@ -245,43 +245,57 @@ $\gamma_{start} = 5 \cdot 10^{-3}$, $\gamma_{end} = 5 \cdot 10^{-4}$.
 
 \section{Method}
 
-DRAFT
+The challenge of detecting reused biological and medical images lies in the difficulty of
+distinguishing between visually similar images while maintaining invariance to various 
+transformations. Our dataset consists of biological snapshots obtained from publicly available 
+sources and is stored as an array $\mathcal{D}$ with elements $d_i \in [0, 256)^{l \times l 
+\times 3}$, where $l$ denotes the length of the image sides. We define a \textit{solution} as 
+any method intended to address the stated problem, and we refer to the \textit{model} as the 
+machine learning solution proposed in our work.
 
-The problem of detecting reused biological and medical images is rooted in the complexity of
-distinguishing between similar images while remaining invariant to various transformations.
-The dataset consists of biological snapshots from publicly available sources, we will 
-store them as an array $D$ with elements $d_i \in [0, 256)^{l \times l \times 3}$, where 
-$l$ is the length of images sides. 
-Let us define the \textit{solution} -- a method which meant to solve the stated problem.
-Also we will use the termini \textit{model} -- the machine learning solution, which is 
-proposed in our work.
+The structure of our model is inspired by the \texttt{Barlow Twins} \cite{zbontar2021barlow}. 
+It consists of three deep networks: an embedding function $f$, a projector function $p$, 
+and a similarity function $s$ that returns a single number in the range $[0,1]$. 
+The embedding network is implemented using a fine-tuned, pretrained \texttt{ResNet50}.
 
-Structure of the model is the same as in \texttt{Barlow Twins} \cite{zbontar2021barlow}.
-It takes a batch of images $X$, each image $x_i$ is being augmented in two ways, producing 
-two modified pictures $y_i^A$ and $y_i^B$ for each original. 
-The resulted two batches of distorted images $Y^A$ and $Y^B$ are then
-fed to a deep network function $f_{\theta}$, and the produced embeddings $Z^A$ and $Z^B$ 
-are used to evaluate loss function $\mathcal{L}$ with the following formula, proposed in 
-\texttt{Barlow Twins} \cite{zbontar2021barlow}:
+To train the projector, we begin with a batch of images $X$. Each image $x_i$ is 
+augmented in two different ways to produce two modified versions, $y_i^A$ and $y_i^B$. 
+These two batches of augmented images, $Y^A$ and $Y^B$, are then processed by the 
+embedding function $f$ to yield embeddings $E^A$ and $E^B$. The embeddings are subsequently 
+passed through the projector function $p$, resulting in the projected embeddings 
+$Z^A$ and $Z^B$. These projected embeddings are used to compute the loss function 
+$\mathcal{L}$ as proposed in \texttt{Barlow Twins} \cite{zbontar2021barlow}:
 
-$$ \mathcal{L}(Z^A, Z^B) = \sum_i {(1 - \zeta_{ii})^2} + \lambda \sum_{i}\sum_{j \neq i}{\zeta_{ij}^2} $$
+$$
+\mathcal{L}(Z^A, Z^B) = \sum_i (1 - \mathcal{C}_{ii})^2 + \lambda \sum_{i} \sum_{j \neq i} \mathcal{C}_{ij}^2,
+$$
 
-where $\lambda$ is the positive constant, and $\zeta_{ij}$ -- cross-correlation matrix, 
-computed between the outputs of the two identical networks along the batch dimension:
+where $\lambda$ is a positive constant, and $\mathcal{C}_{ij}$ is the cross-correlation matrix between the outputs of the two networks along the batch dimension, defined as:
 
-$$ \zeta_{ij} = 
-\frac{\sum_b{z_{b,i}^A z_{b,j}^B}}{\sqrt{\sum_b{(z_{b,i}^A)^2}}\sqrt{\sum_b{(z_{b,j}^B)^2}}} $$
+$$
+\mathcal{C}_{ij} = \frac{\sum_b z_{b,i}^A z_{b,j}^B}{\sqrt{\sum_b (z_{b,i}^A)^2} \sqrt{\sum_b (z_{b,j}^B)^2}}.
+$$
 
-For the further simplicity, we will refer to a pair of images with the same content 
-before alterations as a \textit{similar} pair, otherwise it will be called \textit{dissimilar}. 
-The idea behind this loss function is to minimize the distance between similar pairs embeddings 
-and to make it bigger for dissimilar.
+For simplicity, we refer to a pair of images with the same content before augmentation as a 
+\textit{similar} pair, and a pair with different content as a \textit{dissimilar} pair. The 
+objective of the loss function is to minimize the distance between embeddings of similar pairs 
+while maximizing the distance for dissimilar pairs.
 
-The model is trained on the $70\%$ dataset $D$ data, then validated on another $10\%$ 
-and tested on the remaining $20\%$ -- let $D_{test}$ be this part. For accuracy evaluation, 
-we follow the widely used linear evaluation protocol (here comes the links from \cite{chen2020simclr}).
+For accuracy evaluation, we train the similarity network function $s$ while keeping the 
+model's weights frozen. Given a batch of images $X$, we generate two batches, 
+$Y^A$ and $Y^B$, where $Y^A$ comprises images from $X$ with random modifications, 
+and $Y^B$ is a shuffled version of $X$ with different modifications applied. 
+Consequently, for each image $x_i$, there is a corresponding modified image $y_i^A$ 
+and a randomly transformed image $y_i^B$, with a probability of $0.3$ that they form a 
+\textit{similar} pair. These batches are processed sequentially through the embedding 
+function $f$ and the projector $p$, and the resulting embeddings $Z^A$ and $Z^B$ are then 
+fed into the similarity function $s$. The function $s$ produces a vector $P$ with values 
+in the range $[0,1]$, where each element $P_i$ represents the estimated likelihood that the 
+pair $(y_i^A, y_i^B)$ is similar. The similarity network is trained using 
+Binary Cross-Entropy (BCE) loss.
 
-\section{Related Work}\label{sec:rw}
+The model is trained on $70\%$ of the dataset $\mathcal{D}$, 
+validated on an additional $10\%$, and tested on the remaining $20\%$.
 
 \textbf{Topic \#1.}
 TODO
