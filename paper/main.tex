@@ -50,8 +50,10 @@
 \usepackage{algpseudocode}
 \usepackage{listings}
 \usepackage{caption}
+\usepackage{wrapfig}
+\usepackage{picinpar}
 
-\captionsetup[figure]{width=0.7\textwidth}
+\captionsetup[figure]{width=0.8\textwidth}
 
 \newtheorem{theorem}{Theorem} % continuous numbers
 %%\newtheorem{theorem}{Theorem}[section] % sectionwise numbers
@@ -67,7 +69,6 @@
 \newtheorem{assumption}{Assumption}
 
 %%%
-
 
 \title{Detecting Manual Alterations in Biological Image Data 
 Using Contrastive Learning and Pairwise Image Comparison}
@@ -114,8 +115,8 @@ Using Contrastive Learning and Pairwise Image Comparison}
     using contrastive learning, demonstrating high pairwise comparison metrics to detect 
     manual modifications or more subtle alterations. 
     The proposed method outperforms state-of-the-art models, 
-    including CLIP and Barlow Twins, in the task of biological 
-    image comparison on fMRI scans and cell datasets. 
+    including SimCLR and Barlow Twins, in the task of biological 
+    image comparison on complex cell datasets. 
     This work contributes to automated fraud detection and data validation in 
     biological research.
 
@@ -131,14 +132,19 @@ Our work aims to develop a machine learning solution for the problem
 of reusing existing biological and medical snapshots to demonstrate results 
 in newly published biological articles. Fake images negatively impact on 
 medicine by providing false or fabricated results and undermining the credibility 
-of new scientific work in these fields. Existing state-of-the-art self-supervised learning 
+of new scientific work in these fields. Advances in self-supervised learning for 
+images (\cite{caron2020unsupervised_ssl}, \cite{chen2020exploring_siamese}, 
+\cite{chen2020improved_moco}, \cite{chen2020simple_contrastive}, \cite{grill2020approach_ssl}).
+shows that it is possible to achieve the same results or even outperform supervised 
+representations. 
+Existing state-of-the-art self-supervised learning 
 approaches demonstrate remarkable results in pairwise image comparison tasks 
 (\texttt{SimCLR} \cite{chen2020simclr}, \texttt{CLIP} \cite{radford2021clip}, 
 \text{Barlow Twins} \cite{zbontar2021barlow}). 
 However, their performance significantly worsens when applied to complex biological data. 
 It requires developing model that is more sensitive to subtle changes in the image content 
 while remaining resistant to various manual alterations, such as color jittering, 
-flipping, rotation, noise application, and random affine transformations. 
+flipping, rotation and noise application. 
 At present, the problem of matching biological and medical images remains unsolved due 
 to the complexity of distinguishing snapshots of similar objects, where 
 differences can only be identified by experts in the field.
@@ -147,127 +153,81 @@ We propose a solution, based on \texttt{Barlow Twins} \cite{zbontar2021barlow},
 trained and fine-tuned specifically for complex biological scans. 
 The model belongs to the family of self-supervised learning (SSL) 
 methods, which have been proven to be competitive with supervised representations 
-(\cite{chen2020simclr}, \cite{radford2021clip}, \cite{zbontar2021barlow}, \cite{melekhov2016}, 
-\cite{grill2020approach_ssl}). By leveraging a pretrained model, 
+(\cite{melekhov2016}). We experiment with different loss and training specifics in order
+to achieve best accuracy metrics.
+
+By leveraging a pretrained \texttt{ResNet50} backbone model from 
+\texttt{Barlow Twins} \cite{zbontar2021barlow}, 
 it does not require large snapshot datasets to achieve state-of-the-art accuracy 
-on the \texttt{Haxby fMRI}, \texttt{CIL Epithelial Cell}, 
-\texttt{CIL Lymphocyte Cell} datasets. This solution can be widely used by 
+on the dataset, formed of different cell images from \texttt{Cell Image Library} and \texttt{Kaggle} 
+datasets. This solution can be widely used by 
 biological articles proofreaders to verify the authenticity of provided images and 
 detect borrowings from known datasets. 
 
-%\textbf{Contributions.} Our contributions can be summarized as follows:
-%\begin{itemize}
-%    \item We present...
-%    \item We demonstrate the validity of our theoretical results through empirical studies...
-%    \item We highlight the implications of our findings for...
-%\end{itemize}
-
-%\textbf{Outline.} The rest of the paper is organized as follows...
+\textbf{Outline.} The remainder of this paper is organized as follows. First, we formally define the problem we aim to solve and outline the key challenges. Next, we present our proposed solution in detail, discussing its architecture and specific design and training pipeline choices. We then conduct a series of computational experiments to evaluate our model, comparing its performance with that of existing state-of-the-art approaches, specifically \texttt{Barlow Twins} \cite{zbontar2021barlow}. Finally, we conclude the paper by summarizing our findings and discussing the broader implications and potential impact of our approach on the problem domain.
 
 \section{Problem}\label{sec:problem}
 
 Given dataset $\mathcal{D}$, consisting of $N$ biological snapshots: 
 
-$$ \mathcal{D} = \{d_i \in \mathcal{S}, i \in [0, N)\} $$
+$$ \mathcal{D} = \{d_i \in \mathcal{S}, i \in [0, N)\}, \,
+\mathcal{S} \subseteq \mathbb{R_+}^{H \times W \times C} $$
 
 where $\mathcal{S}$ is the image space. 
 
 For simplicity, we will refer to a pair of images with the same content 
 before alterations as a \textit{similar} pair; otherwise, it will be called \textit{dissimilar}.
-Our goal is to build a model $\mathcal{M}$ using self-supervised contrastive learning (SSCL), 
-which should be able to distinguish dissimilar pairs of images and identify similar ones. 
 
-Let $x$ and $y$ be two images ($x, y \in \mathcal{S}$).
-The model consists of two main parts:
+Our goal is to construct a model $\mathcal{M}$ using self-supervised contrastive learning (SSCL) that can effectively distinguish between dissimilar pairs of images while accurately identifying similar ones. This approach enables the model to learn meaningful representations without the need for extensive labeled data, making it particularly valuable in domains where annotations are scarce or expensive to obtain.
 
-$$ \mathcal{M}(x, y) = h(f_{\theta}(x), f_{\theta}(y))) $$
+Let $x$ and $y$ be two input images such that $x, y \in \mathcal{S}$, where $\mathcal{S}$ is the set of all images. The model $\mathcal{M}$ is composed of two primary components:
 
-where $f_{\theta}$ is an encoder with a trainable parameter set $\theta$, and 
-$h$ is the linear classifier:
+$$ \mathcal{M}(x, y) = h(f(x), f(y)) $$
 
-$$ f_{\theta}(x) = v_x \in \mathbb{R}^{d} $$
+Here, $f$ is an encoder network that maps each image into a $d$-dimensional representation space:
 
-$$ h(v_x, v_y) = s \in \{0, 1\} $$
+$$ f(x) = v_x \in \mathbb{R}^{d}, \quad f(y) = v_y \in \mathbb{R}^{d} $$
 
-Value $s = 1$ corresponds to similar pairs, $s = 0$ represents dissimilar pairs.
+These embeddings $v_x$ and $v_y$ are then passed to a similarity function or linear classifier $h$, which produces a scalar output:
 
-%To train the encoder, let us define the loss function $\mathcal{L}$:
+\[
+h(v_x, v_y) = s \in [0, 1]
+\]
 
-%$$ \mathcal{L}(v_x, v_y, I(x, y)) \in [0, +\infty) $$
+The output value $s$ indicates the model’s prediction: $s \approx 1$ for similar image pairs, and $s \approx 0$ for dissimilar pairs. A common implementation for $h$ is a not complex neural network $\mathcal{N}$ applied to the concatenation of $v_x$ and $v_y$:
 
-%where $v_x$ and $v_y$ are the embeddings of images $x$ and $y$, respectively, 
-%and $I(x, y)$ is defined as follows:
+$$ h(v_x, v_y) = \sigma(\mathcal{N}(v_x, v_y)) $$
 
-%$$ I(x, y) = \begin{cases} 
-%1, \text{if $x$ and $y$ are similar}, \\
-%0, \text{otherwise}
-%\end{cases} $$
+where $\sigma$ is the sigmoid activation function.
 
-The model's accuracy will be evaluated by counting the number of correctly classified similar pairs 
-and incorrectly classified ones, producing a single accuracy value to compare with other 
-state-of-the-art models.
-
-\section{Computational Experiment}
-
-In this section, we conduct an experiment to train the projector of the 
-\texttt{Barlow Twins} model on a blood cells dataset. 
-Our goal is to determine if the model, with its state-of-the-art pretrained encoder, 
-can be successfully adapted to our problem.
-
-The model's encoder is the pretrained \texttt{ResNet50} from the original article
-\cite{zbontar2021barlow}. The dataset consists of $320$ images of lymphocyte cells, 
-split into a training set of $256$ images and a validation set of $64$ scans. 
-The projector is composed of three groups of layers; each group contains a linear layer, 
-batch normalization, and a ReLU activation function. 
-The input dimensions for the groups are $2048$, $1024$, and $1024$, respectively.
-
-The loss function is identical to that described in the original article. 
-For optimization, we use the \texttt{Adam} optimizer with the following learning rate schedule:
-
-$$ q_k = \frac{1}{2} \cdot (1 + \cos(\pi \cdot \frac{k}{K})) $$
-
-$$ \gamma_{k} = \gamma_{start} \cdot q_k + \gamma_{end} \cdot (1 - q_k) $$
-
-where $k$ is the epoch number, $K$ is the total number of epochs, 
-$\gamma_{start} = 5 \cdot 10^{-3}$, $\gamma_{end} = 5 \cdot 10^{-4}$. 
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.95\textwidth]{figures/BT_blood-cells-256_experiment.png}
-    \caption{Graph of the loss function for training and validation samples. 
-    The experiment was conducted over $180$ epochs. 
-    The validation loss decreases alongside the training loss, indicating that 
-    the model can be trained further. 
-    Training takes approximately $25$ minutes on a Google Colab GPU. 
-    }
-    \label{fig:experiment}
-\end{figure}
+To evaluate the model's effectiveness, we rely on several classification performance metrics. These include accuracy, precision, recall, F1-score and ROC AUC. These metrics provide a clear way to evaluate our model and directly compare it to leading methods like \texttt{Barlow Twins} and \texttt{SimCLR}.
 
 \section{Method}
 
 The challenge of detecting reused biological and medical images lies in the difficulty of
 distinguishing between visually similar images while maintaining invariance to various 
-transformations. Our dataset consists of biological snapshots obtained from publicly available 
-sources and is stored as an array $\mathcal{D}$ with elements $d_i \in [0, 256)^{l \times l 
-\times 3}$, where $l$ denotes the length of the image sides. We define a \textit{solution} as 
-any method intended to address the stated problem, and we refer to the \textit{model} as the 
-machine learning solution proposed in our work.
+transformations. Our dataset $\mathcal{D}$ consists of biological snapshots 
+$d_i \in [0, 256)^{224 \times 224 \times 3}$, obtained from publicly available sources. 
+We define a \textit{solution} as any method intended to address the stated problem, 
+and we refer to the \textit{model} as the SSCL solution, proposed in our work.
 
-The structure of our model is inspired by the \texttt{Barlow Twins} \cite{zbontar2021barlow}. 
-It consists of three deep networks: an embedding function $f$, a projector function $p$, 
-and a similarity function $s$ that returns a single number in the range $[0,1]$. 
-The embedding network is implemented using a fine-tuned, pretrained \texttt{ResNet50}.
+The structure of our model is inspired by the \texttt{Barlow Twins} framework \cite{zbontar2021barlow}, which we adapt and refer to as \texttt{Barlow Twins Adaptation (BTA)}. The model comprises three deep neural network components: an encoder $f$, a projector $p$, and a linear classifier $s$ that outputs a single scalar value in the range $[0,1]$, representing the predicted similarity between input pairs.
 
+The encoder is based on a pretrained \texttt{ResNet50}, obtained from the original \texttt{Barlow Twins} repository \cite{zbontar2021barlow}, and is used to extract high-level feature representations from input images. The projector follows the architecture proposed in the original work, with a slight modification: the first layer has an input size of $2048$, while the subsequent three layers each have an input size of $4096$. This component maps the encoder’s output into a space suitable for computing the Barlow Twins loss.
+
+The classifier is a lightweight, trainable neural network that takes the projected embeddings as input and outputs a similarity score through a sigmoid activation function. This component is trained using binary cross-entropy loss to distinguish between positive and negative pairs.
+
+Following training approach is considered classical. 
 To train the projector, we begin with a batch of images $X$. Each image $x_i$ is 
-augmented in two different ways to produce two modified versions, $y_i^A$ and $y_i^B$. 
-These two batches of augmented images, $Y^A$ and $Y^B$, are then processed by the 
-embedding function $f$ to yield embeddings $E^A$ and $E^B$. The embeddings are subsequently 
+augmented in two different ways to produce two modified versions, $x_i^A$ and $x_i^B$. 
+These two batches of augmented images, $X^A$ and $X^B$, are then processed by the 
+embedding function $f$ to yield embeddings $Y^A$ and $Y^B$. The embeddings are subsequently 
 passed through the projector function $p$, resulting in the projected embeddings 
 $Z^A$ and $Z^B$. These projected embeddings are used to compute the loss function 
 $\mathcal{L}$ as proposed in \texttt{Barlow Twins} \cite{zbontar2021barlow}:
 
 $$
-\mathcal{L}(Z^A, Z^B) = \sum_i (1 - \mathcal{C}_{ii})^2 + \lambda \sum_{i} \sum_{j \neq i} \mathcal{C}_{ij}^2,
+\mathcal{L}_{BT} = \sum_i (1 - \mathcal{C}_{ii})^2 + \lambda_{BT} \sum_{i} \sum_{j \neq i} \mathcal{C}_{ij}^2,
 $$
 
 where $\lambda$ is a positive constant, and $\mathcal{C}_{ij}$ is the cross-correlation matrix between the outputs of the two networks along the batch dimension, defined as:
@@ -276,69 +236,210 @@ $$
 \mathcal{C}_{ij} = \frac{\sum_b z_{b,i}^A z_{b,j}^B}{\sqrt{\sum_b (z_{b,i}^A)^2} \sqrt{\sum_b (z_{b,j}^B)^2}}.
 $$
 
-For simplicity, we refer to a pair of images with the same content before augmentation as a 
-\textit{similar} pair, and a pair with different content as a \textit{dissimilar} pair. The 
-objective of the loss function is to minimize the distance between embeddings of similar pairs 
-while maximizing the distance for dissimilar pairs.
-
 For accuracy evaluation, we train the similarity network function $s$ while keeping the 
 model's weights frozen. Given a batch of images $X$, we generate two batches, 
-$Y^A$ and $Y^B$, where $Y^A$ comprises images from $X$ with random modifications, 
-and $Y^B$ is a shuffled version of $X$ with different modifications applied. 
-Consequently, for each image $x_i$, there is a corresponding modified image $y_i^A$ 
-and a randomly transformed image $y_i^B$, with a probability of $0.3$ that they form a 
+$X^A$ and $X^B$, where $X^A$ comprises images from $X$ with random modifications, 
+and $X^B$ is a shuffled version of $X$ with different modifications applied. 
+Consequently, for each image $x_i$, there is a corresponding modified image $x_i^A$ 
+and a randomly transformed image $x_i^B$, with a probability of $0.4$ that they form a 
 \textit{similar} pair. These batches are processed sequentially through the embedding 
-function $f$ and the projector $p$, and the resulting embeddings $Z^A$ and $Z^B$ are then 
+function $f$, returning $Y^A$ and $Y^B$, and the projector $p$, returning resulting embeddings $Z^A$ and $Z^B$, which then being
 fed into the similarity function $s$. The function $s$ produces a vector $P$ with values 
 in the range $[0,1]$, where each element $P_i$ represents the estimated likelihood that the 
 pair $(y_i^A, y_i^B)$ is similar. The similarity network is trained using 
 Binary Cross-Entropy (BCE) loss.
 
-The model is trained on $70\%$ of the dataset $\mathcal{D}$, 
-validated on an additional $10\%$, and tested on the remaining $20\%$.
+We compare this training approach with different one. Freezing backbone's weights, we
+train projector and similarity net together with a combined loss:
 
-\textbf{Topic \#1.}
-TODO
+$$ \mathcal{L} = \mathcal{L}_{BCE} + \lambda \cdot \mathcal{L}_{BT} $$
 
-\textbf{Topic \#2.}
-TODO
+where $\lambda$ is a positive trade-off constant. This loss function enables joint training of the linear classifier and the projector by minimizing a combined loss. The combined loss consists of the previously described loss for projector training, which encourages the embeddings to be invariant and decorrelated, and the binary cross-entropy (BCE) loss, which guides the linear classifier based on labeled pairs. By integrating both objectives, the model can possibly learn more informative representations.
 
-\section{Preliminaries}\label{sec:prelim}
+\begin{figure}[H]
+    \noindent\begin{tabular}{@{}p{0.5\textwidth}@{\hspace{6mm}}p{0.5\textwidth}@{}}
+        \begin{minipage}[t]{0.5\textwidth}
+            \begin{algorithm}[H]
+            \caption{BTA}
+            \label{alg:bta}
+            \begin{algorithmic}[]
+            \Require Augmented batches $X^A$ and $X^B$, backbone $f$, projector $p$, weight $\lambda_{BT}$
+            
+            \State \textbf{Projector training}:
+            \For{$i \in \{A, B\}$}:
+                \State $Y_i = f(\mathcal{X}_i)$
+                \State $Z_i = p(Y_i)$
+                \State $Z_i = Normalize(Z_i)$
+            \EndFor
+            \State $\mathcal{C} = \frac{1}{N} Z_A^T Z_B$
+            \State $\mathcal{L}_{inv} = \sum_i (1 - \mathcal{C}_{ii})^2$
+            \State $\mathcal{L}_{red} = \sum_{i \neq j} \mathcal{C}_{ij}^2$
+            \State $\mathcal{L}_{BT} = \mathcal{L}_{inv} + \lambda_{BT} \cdot \mathcal{L}_{red}$
+            \State \Return $\mathcal{L}_{BT}$
+            
+            \Statex
+            
+            \Require Augmented batches $X^A$ and $X^B$, target $target$, backbone $f$, projector $p$, linear classifier $s$.
+            \State \textbf{Linear classifier training}:
+            \For{$i \in \{A, B\}$}:
+                \State $Y_i = f(\mathcal{X}_i)$
+                \State $Z_i = p(Y_i)$
+                \State $Z_i = Normalize(Z_i)$
+            \EndFor
+            \State $preds = s(Z_A, Z_B)$
+            \State $\mathcal{L}_{BCE} = BCELoss(preds, target)$
+            \State \Return $\mathcal{L}_{BCE}$
+            
+            \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        & 
+        \begin{minipage}[t]{0.5\textwidth}
+            \begin{algorithm}[H]
+            \caption{BTA-combined}
+            \label{alg:bta-combined}
+            \begin{algorithmic}[]
+            \Require Augmented batches $X^A$ and $X^B$, backbone $f$, projector $p$, linear classifier $s$, weight $\lambda_{BT}$, loss-factor $\lambda$
+            
+            \State \textbf{Combined training}:
+            \For{$i \in \{A, B\}$}:
+                \State $Y_i = f(\mathcal{X}_i)$
+                \State $Z_i = p(Y_i)$
+                \State $Z_i = Normalize(Z_i)$
+            \EndFor
+            \State $\mathcal{C} = \frac{1}{N} Z_A^T Z_B$
+            \State $\mathcal{L}_{inv} = \sum_i (1 - \mathcal{C}_{ii})^2$
+            \State $\mathcal{L}_{red} = \sum_{i \neq j} \mathcal{C}_{ij}^2$
+            \State $\mathcal{L}_{BT} = \mathcal{L}_{inv} + \lambda_{BT} \cdot \mathcal{L}_{red}$
 
-\subsection{General notation}
+            \State $Z^A = RepeatInterleave(Z^A, dim=0)$
+            \State $Z^B = Repeat(Z^B, dim=1)$
+            \State $\mathcal{L}_{BCE} = s(Z^A, Z^B)$
+            \State $\mathcal{L}_{BTA} = \mathcal{L}_{BCE} + \lambda \cdot \mathcal{L}_{BT}$
+            \State \Return $\mathcal{L}_{BTA}$
+            
+            \end{algorithmic}
+            \end{algorithm}
 
-In this section, we introduce the general notation used in the rest of the paper and the basic assumptions. 
+            Due to the combined training, the algorithm computes the embeddings $Z^A$ and $Z^B$ only once to calculate the combined loss $\mathcal{L}_{BTA}$. The BCE loss is evaluated for every pair $(Z^A_i, Z^B_j)$, unlike in the linear classifier training used in BTA.
+        \end{minipage}
+    \end{tabular}
+\end{figure}
 
-\subsection{Assumptions} 
+To our model trained this way we will refer as \texttt{BTA-combined}. Accuracy metrics comparisons 
+of these and state-of-the-art methods are demonstrated in the following section.
 
-TODO
+\section{Computational Experiment}
 
-\section{Experiments}\label{sec:exp}
+In this section, we present experiments comparing our model—trained using two distinct strategies—with the \texttt{Barlow Twins} method on a specially curated cell dataset. To ensure a fair and meaningful comparison, we adopt the same linear classifier architecture as the model head in both our approaches and the adapted \texttt{Barlow Twins}. Our goal is to evaluate whether our solution can outperform the baseline in terms of several accuracy-related metrics, including accuracy, F1-score, precision, recall, and AUC ROC.
 
-To verify the theoretical estimates obtained, we conducted a detailed empirical study...
+Our dataset consists of 700 microscopic images representing human, animal, and plant cells. These images were sourced from publicly available repositories, including \texttt{Kaggle} and the \texttt{Cell Image Library}. The dataset was divided into training $(80\%)$ and validation $(20\%)$ subsets, with all images being distinct to promote diversity and prevent data leakage during model evaluation.
 
-\section{Discussion}\label{sec:disc}
+We introduce and compare two variants of our proposed architecture:
 
-TODO
+\begin{itemize}
+\item \textbf{BTA (Barlow Twins Adaptation)}: In this setup, we first train the projector for 200 epochs, followed by training the linear classifier for an additional 100 epochs.
+\item \textbf{BTA-Combined}: This variant involves joint training of the projector and the linear classifier over 200 epochs.
+\end{itemize}
+
+To maintain consistency, the linear classifier in the original \texttt{Barlow Twins} implementation was also trained for 100 epochs under the same settings. All models were optimized using the \texttt{AdamW} optimizer with a cosine annealing learning rate schedule defined as follows:
+
+$$ q_k = \frac{1}{2} \cdot (1 + \cos(\pi \cdot \frac{k}{K})) $$
+
+$$ \gamma_{k} = \gamma_{start} \cdot q_k + \gamma_{end} \cdot (1 - q_k) $$
+
+where $k$ is the current epoch, $K$ is the total number of epochs, and the learning rates are set as $\gamma_{start} = 3 \cdot 10^{-3}$ and $\gamma_{end} = 5 \cdot 10^{-4}$. This schedule helps the models converge more smoothly by gradually decreasing the learning rate during training.
+
+\begin{figure}[htbp]
+    \noindent\begin{tabular}{@{}p{0.35\textwidth}@{\hspace{6mm}}p{0.6\textwidth}@{}}
+        Original \texttt{Barlow Twins} model shows the least promising results, 
+        which can be described by complexity of given biological images,
+        while BTA and BTA-combined each outperform state-of-the-art model in any 
+        accuracy metrics. 
+        &
+        \centering
+        \begin{tabular}[t]{lccc}
+            \hline
+            Metric & BTA & BTA-combined & Barlow Twins \\
+            \hline
+            Accuracy & \textbf{0.89} & 0.87 & 0.68 \\
+            Precision & 0.87 & \textbf{0.92} & 0.54 \\
+            Recall & \textbf{0.84} & 0.71 & 0.43 \\
+            F1-score & \textbf{0.85} & 0.80 & 0.48 \\
+            AUC ROC & 0.94 & \textbf{0.97} & 0.69 \\
+            \hline
+        \end{tabular}
+    \end{tabular}
+    
+    \vspace{5mm}
+    
+    \centering
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig/BTA_roc-auc.png}
+        \caption*{BTA ROC curve}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig/BTA-combined_roc-auc.png}
+        \caption*{BTA-combined ROC curve}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{fig/BTA-combined_roc-auc.png}
+        \caption*{Barlow Twins ROC curve}
+    \end{minipage}
+    
+    \caption{Comparison of AUC ROC scores for every method}
+    \label{fig:experiment}
+\end{figure}
+
+In this experiment, we set $\lambda_{BT} = 4 \cdot 10^{-3}$ for projector training loss 
+function and $\lambda = 2 \cdot 10^{-5}$ for BTA-combined training. The chosen $\lambda_{BT}$ 
+value is similar to the value proposed in the \cite{zbontar2021barlow} article, while 
+impact of $\lambda$ value we will explore in the following section.
+
+\section{Hyperparameter values}\label{sec:hyperval}
+
+In this section, we conduct experiments to estimate the best hyperparameter values 
+over accuracy metrics (accuracy and F1-score). While we set 
+$\lambda_{BT} = 4 \cdot 10^{-3}$, which is nearly the same as in the main article's 
+$\lambda_{BT}$ value (\cite{zbontar2021barlow}), we want to estimate $\lambda$ for 
+BTA-combined training.
+
+\begin{wrapfigure}{r}{0.65\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{fig/BTA-combined_lambdas-accuracy.png}
+    \caption{Model accuracy varying $\lambda$ value}
+\end{wrapfigure}
+To determine the best value for $\lambda$, we tested multiple values during training of the BTA-combined model, running each experiment for 100 epochs. If $\lambda$ is set "too low", the projector loss barely affects training. Without this component, the model fails to learn useful features from the projector, leading to worse accuracy. However, if $\lambda$ is "too high", the BCE loss (responsible for training the classifier) gets overshadowed. This imbalance prevents the classifier from learning to make reliable predictions, even if the projector works well. After testing different values, we found that $\lambda = 2 \cdot 10^{-5}$ strikes the right balance: it allows both the projector and classifier to contribute effectively during training. At this value, the model achieves its highest accuracy compared to other tested options, as shown in Figure 2.
+
+\begin{wrapfigure}{r}{0.65\textwidth}
+    \centering
+    \includegraphics[width=1\linewidth]{fig/BTA-combined_lambdas-f1-score.png}
+    \caption{Model F1-score varying $\lambda$ value}
+\end{wrapfigure}
+The F1-score curve (Figure 3) further validates the optimal choice of $\lambda = 2 \cdot 10^{-5}$, mirroring the accuracy trends. Unlike accuracy, which measures overall correctness, the F1-score balances precision and recall, making it particularly sensitive to binary classification imbalance since we set the probability of the pair of images being the same in accuracy validation to $0.4$. As was mentioned before, the sharp decline in F1-score at higher $\lambda$ values ($>10^{-4}$) suggests that an overemphasis on the projector loss destabilizes the classifier’s ability to reconcile false positives and negatives. Conversely, at lower $\lambda$ ($<2 \cdot 10^{-5}$), the F1-score somehow drops as the accuracy does indicating that residual projector regularization—even when minimal—still aids in extracting features that harmonize precision and recall. The symmetry between the accuracy and F1-score maxima underscores that $\lambda = 2 \cdot 10^{-5}$ maximizes overall performance on linear classification metrics.
 
 \section{Conclusion}\label{sec:concl}
 
-TODO
-
+Our results show that our model significantly outperforms the state-of-the-art \texttt{Barlow Twins} framework \cite{zbontar2021barlow} on pairwise image comparison. The main innovation is our new training method, which uses a combined loss to jointly train a parallel projector and linear classifier. This approach performs as well as the traditional two-stage training setup. We believe future work in pairwise image comparison, especially in complex visual tasks, can benefit from our unified strategy, potentially setting a new standard for handling visually ambiguous image pairs.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\nocite{*}
 
 \bibliographystyle{unsrtnat}
 \bibliography{references}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
-\appendix
-\section{Appendix / supplemental material}\label{app}
-
-\subsection{Additional experiments}\label{app:exp}
-
-TODO
+%\newpage
+%\appendix
+%\section{Appendix / supplemental material}\label{app}
+%\subsection{Additional experiments}\label{app:exp}
+%TODO
 
 \end{document}
