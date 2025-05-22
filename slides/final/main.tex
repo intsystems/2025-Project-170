@@ -1,0 +1,260 @@
+\documentclass{beamer}
+\beamertemplatenavigationsymbolsempty
+\usecolortheme{beaver}
+\setbeamertemplate{blocks}[rounded=true, shadow=true]
+\setbeamertemplate{footline}[page number]
+%
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amssymb,amsfonts,amsmath,mathtext}
+\usepackage{subfig}
+\usepackage[all]{xy} % xy package for diagrams
+\usepackage{array}
+\usepackage{multicol}% many columns in slide
+\usepackage{hyperref}% urls
+\usepackage{hhline}%tables
+% Your figures are here:
+\graphicspath{ {fig/} {../fig/} }
+
+%--------------------------------------------------------------------------------------------------
+
+\title[\hbox to 56mm{Detecting Alterations}]{Detecting Manual Alterations in Biological Image Data Using Contrastive Learning and Pairwise Image Comparison}
+\author[G.\,S.~Nekhoroshkov]{Georgii Nekhoroshkov}
+\institute{Moscow Institute of Physics and Technology}
+\date{\footnotesize
+\par\smallskip\emph{Course:} My first scientific paper\par (Strijov's practice)
+\par\smallskip\emph{Expert:} A.\,V.~Grabovoy
+\par\smallskip\emph{Consultant:} D.\,D.~Dorin
+\par\bigskip\small 2025}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{document}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}
+\thispagestyle{empty}
+\maketitle
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Ensure Biological Image Integrity}
+\begin{block}{Comparing 2 images}
+Develop a contrastive learning model for pairwise image comparison to:
+\begin{enumerate}
+    \item Detect alterations (color jittering, crop, rotation, noise) 
+    \item Select pairs of images with the same content
+    \item Outperform existing state-of-the-art  models (Barlow Twins\footnote{{\tiny \textit{J. Zbontar et al.} Barlow Twins: Self-Supervised Learning via Redundancy Reduction // ICML, 2021.}}, SimCLR\footnote{{\tiny \textit{T. Chen et al.} A Simple Framework for Contrastive Learning of Visual Representations // ICML, 2021.}}) on cell datasets
+\end{enumerate}
+\end{block}
+\begin{center}
+    \includegraphics[width=1\textwidth]{fig/alterations.png}
+\end{center}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Detection of Similar Images Despite Modifications}
+
+\begin{columns}
+    \begin{column}{0.42\textwidth}
+        \includegraphics[width=1\textwidth]{fig/model-example.png}
+    \end{column}
+    \begin{column}{0.58\textwidth}
+        The model should process two images and output a value from [0, 1] --
+        the likelihood that they are identical, up to modifications.
+        
+        \bigskip
+        The method must leverage a self-supervised learning approach.
+    \end{column}
+\end{columns}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Key Articles}
+\begin{enumerate}
+    \item \textbf{SimCLR}: Chen T. et al. "A Simple Framework for Contrastive Learning of Visual Representations", ICML 2020
+    \item \textbf{Barlow Twins}: Zbontar J. et al. "Barlow Twins: Self-Supervised Learning via Redundancy Reduction", ICML 2021  
+    \item \textbf{CLIP}: Radford A. et al. "Learning Transferable Visual Models From Natural Language Supervision", ICML 2021
+    \item \textbf{Siamese Networks}: Melekhov I. et al. "Siamese Network Features for Image Matching", ICPR 2016
+\end{enumerate}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Problem Statement}
+\begin{block}{Given biological image dataset}
+    \begin{equation*}
+        \mathcal{D} = \{d_i \in \mathcal{S},\ i \in [0, N)\},\quad 
+        \mathcal{S} \subseteq \mathbb{R}^{H \times W \times C}
+    \end{equation*}
+\end{block}
+
+\begin{block}{Pairwise similarity classification}
+    For any $(x, y) \in \mathcal{S} \times \mathcal{S}$, learn mapping:
+    \begin{equation*}
+        \mathcal{M}: (x, y) \mapsto s \in [0, 1]
+    \end{equation*}
+    where:
+    $$
+    s = 
+    \begin{cases}
+    1, & \text{\textit{similar} pair (same content pre-alteration)}, \\
+    0, & \text{\textit{dissimilar} pair (different content)}
+    \end{cases}
+    $$
+\end{block}
+\end{frame}
+
+%----------------------------------------------------------------------------------------------------
+
+\begin{frame}{Model Decomposition}
+\begin{block}{Fixed structure}
+    $$ \mathcal{M}(x, y) = h(f(x), f(y)) $$
+    where:
+    $$ f : \mathcal{S} \rightarrow \mathbb{R}^d \, \text{(encoder)} $$
+    $$ h : \mathbb{R}^d \times \mathbb{R}^d \rightarrow [0, 1] \, \text{(classifier)} $$
+\end{block}
+
+\begin{block}{Quality metric}
+    Maximize accuracy over pairwise comparisons:
+    \begin{equation*}
+    \text{Acc} = \frac{1}{|\mathcal{P}|} \sum_{(x,y) \in \mathcal{P}} \mathbb{I}\big(\mathcal{M}(x,y) = I(x,y)\big)
+    \end{equation*}
+    where $\mathcal{P}$ is test pairs, $I(x,y)$ ground truth similarity.
+\end{block}
+\end{frame}
+
+%-----------------------------------------------------------------------------------------------------
+
+\begin{frame}{Barlow Twins Adaptation (BTA)}
+\begin{columns}
+    \column{0.53\textwidth}
+    \begin{block}{Model based on Barlow Twins}
+        \vspace{3mm}
+        Architecture:
+        \begin{itemize}
+            \item ResNet-50 backbone
+            \item Projector
+            \item Similarity head
+        \end{itemize}
+        Training specific:
+        \begin{itemize}
+            \item Parallel image augmentation
+            \item AdamW optimizer with decreasing learning rate
+            \item Performed on a specially selected dataset
+        \end{itemize}
+        
+        \vspace{2mm}
+        \textbf{Key Innovation:} \\
+        Custom model's head, training dataset and pipeline \\
+    \end{block}
+    
+    \column{0.52\textwidth}
+    \begin{center}
+        \includegraphics[width=1\textwidth]{fig/model.png}
+    \end{center}
+\end{columns}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Comparing Training Pipelines}
+\begin{block}{Modifying original learning specifics}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \vspace{2mm}
+        \begin{center}
+            \textbf{Consecutively}
+        \end{center}
+        $ \mathcal{L}_{proj} = \sum_i(1 - \mathcal{C}_{ii})^2 + \lambda_{proj} \sum_i \sum_{j \neq i} \mathcal{C}_{ij}^2 $
+
+        \vspace{3mm}
+        
+        $ \mathcal{C}_{ij} = \frac{\sum_b{z_{b,i}^A z_{b,j}^B}}{\sqrt{\sum_b{(z_{b,i}^A)^2}} \sqrt{\sum_b{(z_{b,j}^B)^2}}} $
+
+        \vspace{3mm}
+        
+        $ \mathcal{L}_{sim} = BCELoss $
+    
+        \column{0.4\textwidth}
+        \vspace{2mm}
+        \begin{center}
+            \textbf{Parallel}
+        \end{center}
+        $ \mathcal{L} = \mathcal{L}_{sim} + \lambda \cdot \mathcal{L}_{proj} $
+    \end{columns}
+\end{block}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Experiment Setup}
+    \textbf{Dataset}: 630 biological scans (animal and plant cells) \\
+    \textbf{Train/Test Split}: 80\%/20\% \\
+    \textbf{Training}: 100 epochs, AdamW optimizer ($\gamma_{start}=3\cdot10^{-3}, \gamma_{end}=5\cdot10^{-4}$)
+
+\vspace{4mm}
+
+\begin{block}{Evaluation Protocol}
+    Compare with Barlow Twins and SimCLR baselines \\
+    Metrics:
+    \begin{enumerate}
+        \item Accuracy 
+        \item F1-Score, Precision, Recall
+        \item AUC-ROC
+    \end{enumerate}
+\end{block}
+\end{frame}
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Significant Accuracy Improvements}
+\vspace{3mm}
+\centering
+\begin{tabular}{lcccc}
+\hline
+Metric & BTA conseq & BTA parallel & BT & SimCLR \\ \hline
+Accuracy & 0.89 & \textbf{\color{red}0.90} & 0.68 & \textbf{0.67} \\
+F1-Score & \textbf{\color{red}0.85} & 0.80 & \textbf{0.48} & 0.54 \\
+Recall & \textbf{\color{red}0.84} & 0.71 & \textbf{0.43} & 0.52 \\
+Precision & 0.87 & \textbf{\color{red}0.92} & 0.54 & \textbf{0.46} \\
+AUC & 0.95 & \textbf{\color{red}0.97} & \textbf{0.69} & 0.71 \\ \hline
+\end{tabular}
+
+\vspace{6mm}
+\begin{columns}[T]
+    \column{0.5\textwidth}
+    \centering
+    {\tiny BTA conseq} \\
+    \includegraphics[width=1\textwidth]{fig/roc-auc-BTA.png} \\
+
+    \hspace{-8mm}
+    
+    \column{0.5\textwidth}
+    \centering
+    {\tiny BTA parallel} \\
+    \includegraphics[width=1\textwidth]{fig/roc-auc-BTA-combined.png}
+    
+\end{columns}
+\end{frame}
+
+
+%--------------------------------------------------------------------------------------------------
+
+\begin{frame}{Key Achievements}
+\begin{enumerate}
+    \item Significant accuracy metrics improvement over state-of-the-art models Barlow Twins and SimCLR
+    \item Model is robust to 4 types of manual alterations
+    \item First biological-SSL solution for automated fraud detection and image provenance verification
+\end{enumerate}
+
+\begin{block}{Research materials are available in GitHub repository}
+    \url{https://github.com/intsystems/2025-Project-170}
+\end{block}
+\end{frame}
+
+\end{document}
